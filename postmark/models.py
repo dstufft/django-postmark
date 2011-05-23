@@ -45,6 +45,9 @@ def sent_message(sender, **kwargs):
         list(izip_longest(msg.get("Cc", "").split(","), [], fillvalue='cc')) +
         list(izip_longest(msg.get("Bcc", "").split(","), [], fillvalue='bcc'))):
         
+        if not recipient[0]:
+            continue
+        
         timestamp, tz = resp["SubmittedAt"].rsplit("+", 1)
         tz_offset = int(tz.split(":", 1)[0])
         tz = timezone("Etc/GMT%s%d" % ("+" if tz_offset >= 0 else "-", tz_offset))
