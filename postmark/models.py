@@ -34,6 +34,9 @@ class EmailMessage(models.Model):
     headers = models.TextField()
     attachments = models.TextField()
     
+    def __unicode__(self):
+        return u"%s" % (self.message_id,)
+    
 
 @receiver(post_send)
 def sent_message(sender, **kwargs):
