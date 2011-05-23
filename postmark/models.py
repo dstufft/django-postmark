@@ -67,7 +67,7 @@ class EmailMessage(models.Model):
         ordering = ["-submitted_at"]
 
 class EmailBounce(models.Model):
-    bounce_id = models.PositiveIntegerField(_("Bounce ID"))
+    id = models.PositiveIntegerField(primary_key=True)
     message = models.ForeignKey(EmailMessage, related_name="bounces", verbose_name=_("Message"))
     
     inactive = models.BooleanField(_("Inactive"))
@@ -80,7 +80,7 @@ class EmailBounce(models.Model):
     bounced_at = models.DateTimeField(_("Bounced At"))
     
     def __unicode__(self):
-        return u"%s" % (self.bounce_id,)
+        return u"Bounce: %s" % (self.message.to,)
     
     class Meta:
         verbose_name = _("email bounce")
