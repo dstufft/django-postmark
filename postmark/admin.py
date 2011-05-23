@@ -13,15 +13,19 @@ class EmailBounceAdmin(admin.ModelAdmin):
     
     def get_message_to(self, obj):
         return u"%s" % obj.message.to
+    get_message_to.short_description = _("To")
     
     def get_message_to_type(self, obj):
-        return u"%s" % obj.message.to_type
+        return u"%s" % obj.message.get_to_type_display()
+    get_message_to_type.short_description = _("Type")
     
     def get_message_subject(self, obj):
         return u"%s" % obj.message.subject
+    get_message_subject.short_description = _("Subject")
     
     def get_message_tag(self, obj):
         return u"%s" % obj.message.tag
+    get_message_tag.short_description = _("Tag")
 
 
 class EmailBounceInline(admin.TabularInline):
