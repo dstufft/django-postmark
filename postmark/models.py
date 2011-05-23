@@ -7,12 +7,33 @@ import pytz
 
 from postmark.signals import post_send
 
-POSTMARK_DATETIME_STRING = "%Y-%m-%dT%H:%M:%S.%f"#u'2011-05-23T07:38:26.3115+01:00'
+POSTMARK_DATETIME_STRING = "%Y-%m-%dT%H:%M:%S.%f"
 
 TO_CHOICES = (
     ("to", "Recipient"),
     ("cc", "Carbon Copy"),
     ("bcc", "Blind Carbon Copy"),
+)
+
+BOUNCE_TYPES = (
+    ("HardBounce", "Hard Bounce"),
+    ("Transient", "Transient"),
+    ("Unsubscribe", "Unsubscribe"),
+    ("Subscribe", "Subscribe"),
+    ("AutoResponder", "AutoResponder"),
+    ("AddressChange", "AddressChange"),
+    ("DnsError", "DNS Error"),
+    ("SpamNotification", "Spam Notification"),
+    ("OpenRelayTest", "Open Relay Test"),
+    ("Unknown", "Unknown"),
+    ("SoftBounce", "Soft Bounce"),
+    ("VirusNotification", "Virus Notification"),
+    ("ChallengeVerification", "Challenge Verification"),
+    ("BadEmailAddress", "Bad Email Address"),
+    ("SpamComplaint", "Spam Complaint"),
+    ("ManuallyDeactivated", "Manually Deactivated"),
+    ("Unconfirmed", "Unconfirmed"),
+    ("Blocked", "Blocked"),
 )
 
 class EmailMessage(models.Model):
@@ -36,6 +57,23 @@ class EmailMessage(models.Model):
     
     def __unicode__(self):
         return u"%s" % (self.message_id,)
+
+class EmailBounce(models.Model):
+    bounce_id = models.PositiveIntegerField()
+    message_id = models.ForeignKey(EmailMessage, related_name="bounces")
+    
+    inactive = models.BooleanField()
+    can_activate = models.BooleanField()
+    
+    type = models.CharField(max_length=100, choices=BOUNCE_TYPES)
+    description = models.TextField()
+    details = models.TextField()
+    
+    bounced_at = models.DateTimeField()
+    
+    def __unicode__(self):
+        return u"%s" % (self.bounce_id,)
+    
     
 
 @receiver(post_send)
