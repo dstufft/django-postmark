@@ -81,6 +81,14 @@ class EmailBounce(models.Model):
     
     def __unicode__(self):
         return u"%s" % (self.bounce_id,)
+    
+    class Meta:
+        verbose_name = _("email bounce")
+        verbose_name_plural = _("email bounces")
+        
+        order_with_respect_to = "message"
+        get_latest_by = "bounced_at"
+        ordering = ["-bounced_at"]
 
 @receiver(post_send)
 def sent_message(sender, **kwargs):
