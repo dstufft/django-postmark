@@ -112,8 +112,8 @@ class PostmarkMessage(dict):
                 if message.extra_headers.has_key("Reply-To"):
                     message_dict["ReplyTo"] = message.extra_headers.pop("Reply-To")
                     
-                if message.extra_headers.has_key("Tag"):
-                    message_dict["Tag"] = message.extra_headers.pop("Tag")
+                if message.extra_headers.has_key("X-Postmark-Tag"):
+                    message_dict["Tag"] = message.extra_headers.pop("X-Postmark-Tag")
                     
                 if len(message.extra_headers):
                     message_dict["Headers"] = [{"Name": x[0], "Value": x[1]} for x in message.extra_headers.items()]
