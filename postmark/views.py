@@ -1,9 +1,12 @@
-from django.http import HttpResponse, HttpResponseNotAllowed, HttpResponseBadRequest
+from django.http import HttpResponse, HttpResponseNotAllowed, HttpResponseBadRequest, HttpResponseForbidden
+from django.core.exceptions import ImproperlyConfigured
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
+from django.conf import settings
 from datetime import datetime
 from pytz import timezone
 import pytz
+import base64
 
 from postmark.models import EmailMessage, EmailBounce
 
@@ -16,6 +19,14 @@ except ImportError:
         raise Exception('Cannot use django-postmark without Python 2.6 or greater, or Python 2.4 or 2.5 and the "simplejson" library')
 
 POSTMARK_DATETIME_STRING = "%Y-%m-%dT%H:%M:%S.%f"
+
+# Settings
+POSTMARK_API_USER = getattr(settings, "POSTMARK_API_USER", None)
+POSTMARK_API_PASSWORD = getattr(settings, "POSTMARK_API_PASSWORD", None)
+
+if ((POSTMARK_API_USER is not None and POSTMARK_API_PASSWORD is None) or
+    (POSTMARK_API_PASSWORD is not None and POSTMARK_API_USER is None)):
+    raise ImproperlyConfigured("POSTMARK_API_USER and POSTMARK_API_PASSWORD must both either be set, or unset.")
 
 @csrf_exempt
 def bounce(request):
@@ -41,6 +52,20 @@ def bounce(request):
         }
     """
     if request.method in ["POST"]:
+        if POSTMARK_API_USER is not None:
+            if not request.META.has_key("HTTP_AUTHORIZATION"):
+                return HttpResponseForbidden()
+                
+            type, base64encoded = request.META["HTTP_AUTHORIZATION"].split(" ", 1)
+            
+            if type.lower() == "basic":
+                username_password = base64.decodestring(base64encoded)
+            else:
+                return HttpResponseForbidden()
+                
+            if not username_password == "%s:%s" % (POSTMARK_API_USER, POSTMARK_API_PASSWORD):
+                return HttpResponseForbidden()
+        
         bounce_dict = json.loads(request.read())
             
         timestamp, tz = bounce_dict["BouncedAt"].rsplit("+", 1)
