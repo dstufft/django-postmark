@@ -20,6 +20,37 @@ POSTMARK_TEST_MODE = getattr(settings, "POSTMARK_TEST_MODE", False)
 POSTMARK_API_URL = ("https" if POSTMARK_SSL else "http") + "://api.postmarkapp.com/email"
 POSTMARK_BATCH_API_URL = ("https" if POSTMARK_SSL else "http") + "://api.postmarkapp.com/email/batch"
 
+class PostmarkMailSendException(Exception):
+    """
+    Base Postmark send exception
+    """
+    def __init__(self, value, inner_exception=None):
+        self.parameter = value
+        self.inner_exception = inner_exception
+    def __str__(self):
+        return repr(self.parameter)
+
+class PostmarkMailUnauthorizedException(PostmarkMailSendException):
+    """
+    401: Unathorized sending due to bad API key
+    """
+    pass
+
+class PostmarkMailUnprocessableEntityException(PostmarkMailSendException):
+    """
+    422: Unprocessable Entity - usually an exception with either the sender
+    not having a matching Sender Signature in Postmark.  Read the message
+    details for further information
+    """
+    pass
+    
+class PostmarkMailServerErrorException(PostmarkMailSendException):
+    """
+    500: Internal error - this is on the Postmark server side.  Errors are
+    logged and recorded at Postmark.
+    """
+    pass
+
 class PostmarkMessage(dict):
     """
     Creates a Dictionary representation of a Django EmailMessage that is suitable
@@ -133,18 +164,41 @@ class PostmarkBackend(BaseEmailBackend):
     def _send(self, messages):
         http = httplib2.Http()
         
-        responses = []
-        for message in messages:
-            if POSTMARK_TEST_MODE:
+        if POSTMARK_TEST_MODE:
+            responses = []
+            for message in messages:
                 print 'JSON message is:\n%s' % json.dumps(message)
                 responses.append({"ErrorCode": 0, "HttpStatus": 200})
+            return responses
+        
+        resp, content = http.request(self.api_batch_url,
+            body=json.dumps(messages),
+            method="POST",
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "X-Postmark-Server-Token": self.api_key,
+            })
+        
+        if resp["status"] == "200":
+            responses = [dict(x.items() + [("HttpStatus", 200)]) for x in json.loads(content)]
+        elif resp["status"] == "401":
+            if self.fail_silently:
+                responses = [{"ErrorCode": 0, "HttpStatus": 401}]
             else:
-                print self.api_batch_url
-                resp, content = http.request(self.api_batch_url,
-                    body=json.dumps(message),
-                    headers={
-                        "Accept": "application/json",
-                        "Content-Type": "application/json",
-                        "X-Postmark-Server-Token": self.api_key,
-                    })
-        return [{"ErrorCode": 0, "HttpStatus": 200}]
+                raise PostmarkMailUnauthorizedException("Your Postmark API Key is Invalid.")
+        elif resp["status"] == "422":
+            if self.fail_silently:
+                content_dict = json.loads(content)
+                content_dict["HttpStatus"] = 422
+                responses = [content_dict]
+            else:
+                content_dict = json.loads(content)
+                raise PostmarkMailUnprocessableEntityException(content_dict["Message"])
+        elif resp["status"] == "500":
+            if self.fail_silently:
+                responses = [{"ErrorCode": 0, "HttpStatus": 500}]
+            else:
+                PostmarkMailServerErrorException()
+        
+        return responses
