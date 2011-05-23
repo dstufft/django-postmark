@@ -1,3 +1,4 @@
+from django.utils.translation import ugettext_lazy as _
 from django.contrib import admin
 
 from postmark.models import EmailMessage
@@ -13,15 +14,15 @@ class EmailMessageAdmin(admin.ModelAdmin):
         (None, {
             "fields": ("message_id", "status", "subject", "tag", "to", "to_type", "sender", "reply_to", "submitted_at")
         }),
-        ("Text Body", {
+        (_("Text Body"), {
             "fields": ("text_body",),
             "classes": ("collapse", "closed")
         }),
-        ("HTML Body", {
+        (_("HTML Body"), {
             "fields": ("html_body",),
             "classes": ("collapse", "closed")
         }),
-        ("Advanced", {
+        (_("Advanced"), {
             "fields": ("headers", "attachments"),
             "classes": ("collapse", "closed")
         })

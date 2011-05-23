@@ -1,3 +1,4 @@
+from django.utils.translation import ugettext_lazy as _
 from django.dispatch import receiver
 from django.db import models
 from itertools import izip_longest
@@ -10,71 +11,76 @@ from postmark.signals import post_send
 POSTMARK_DATETIME_STRING = "%Y-%m-%dT%H:%M:%S.%f"
 
 TO_CHOICES = (
-    ("to", "Recipient"),
-    ("cc", "Carbon Copy"),
-    ("bcc", "Blind Carbon Copy"),
+    ("to", _("Recipient")),
+    ("cc", _("Carbon Copy")),
+    ("bcc", _("Blind Carbon Copy")),
 )
 
 BOUNCE_TYPES = (
-    ("HardBounce", "Hard Bounce"),
-    ("Transient", "Transient"),
-    ("Unsubscribe", "Unsubscribe"),
-    ("Subscribe", "Subscribe"),
-    ("AutoResponder", "AutoResponder"),
-    ("AddressChange", "AddressChange"),
-    ("DnsError", "DNS Error"),
-    ("SpamNotification", "Spam Notification"),
-    ("OpenRelayTest", "Open Relay Test"),
-    ("Unknown", "Unknown"),
-    ("SoftBounce", "Soft Bounce"),
-    ("VirusNotification", "Virus Notification"),
-    ("ChallengeVerification", "Challenge Verification"),
-    ("BadEmailAddress", "Bad Email Address"),
-    ("SpamComplaint", "Spam Complaint"),
-    ("ManuallyDeactivated", "Manually Deactivated"),
-    ("Unconfirmed", "Unconfirmed"),
-    ("Blocked", "Blocked"),
+    ("HardBounce", _("Hard Bounce")),
+    ("Transient", _("Transient")),
+    ("Unsubscribe", _("Unsubscribe")),
+    ("Subscribe", _("Subscribe")),
+    ("AutoResponder", _("Auto Responder")),
+    ("AddressChange", _("Address Change")),
+    ("DnsError", _("DNS Error")),
+    ("SpamNotification", _("Spam Notification")),
+    ("OpenRelayTest", _("Open Relay Test")),
+    ("Unknown", _("Unknown")),
+    ("SoftBounce", _("Soft Bounce")),
+    ("VirusNotification", _("Virus Notification")),
+    ("ChallengeVerification", _("Challenge Verification")),
+    ("BadEmailAddress", _("Bad Email Address")),
+    ("SpamComplaint", _("Spam Complaint")),
+    ("ManuallyDeactivated", _("Manually Deactivated")),
+    ("Unconfirmed", _("Unconfirmed")),
+    ("Blocked", _("Blocked")),
 )
 
 class EmailMessage(models.Model):
-    message_id = models.CharField(max_length=40)
-    submitted_at = models.DateTimeField()
-    status = models.CharField(max_length=150)
+    message_id = models.CharField(_("Message ID"), max_length=40)
+    submitted_at = models.DateTimeField(_("Submitted At"))
+    status = models.CharField(_("Status"), max_length=150)
     
-    to = models.CharField(max_length=150)
-    to_type = models.CharField(max_length=3, choices=TO_CHOICES)
+    to = models.CharField(_("To"), max_length=150)
+    to_type = models.CharField(_("Type"), max_length=3, choices=TO_CHOICES)
     
-    sender = models.CharField(max_length=150)
-    reply_to = models.CharField(max_length=150)
-    subject = models.CharField(max_length=150)
-    tag = models.CharField(max_length=25)
+    sender = models.CharField(_("Sender"), max_length=150)
+    reply_to = models.CharField(_("Reply To"), max_length=150)
+    subject = models.CharField(_("Subject"), max_length=150)
+    tag = models.CharField(_("Tag"), max_length=25)
     
-    text_body = models.TextField()
-    html_body = models.TextField()
+    text_body = models.TextField(_("Text Body"))
+    html_body = models.TextField(_("HTML Body"))
     
-    headers = models.TextField()
-    attachments = models.TextField()
+    headers = models.TextField(_("Headers"))
+    attachments = models.TextField(_("Attachments"))
     
     def __unicode__(self):
         return u"%s" % (self.message_id,)
+    
+    class Meta:
+        verbose_name = _("email message")
+        verbose_name_plural = _("email messages")
+        
+        get_latest_by = "submitted_at"
+        ordering = ["-submitted_at"]
 
 class EmailBounce(models.Model):
-    bounce_id = models.PositiveIntegerField()
-    message_id = models.ForeignKey(EmailMessage, related_name="bounces")
+    bounce_id = models.PositiveIntegerField(_("Bounce ID"))
+    message_id = models.ForeignKey(EmailMessage, related_name="bounces", verbose_name=_("Message ID"))
     
-    inactive = models.BooleanField()
-    can_activate = models.BooleanField()
+    inactive = models.BooleanField(_("Inactive"))
+    can_activate = models.BooleanField(_("Can Activate"))
     
-    type = models.CharField(max_length=100, choices=BOUNCE_TYPES)
-    description = models.TextField()
-    details = models.TextField()
+    type = models.CharField(_("Type"), max_length=100, choices=BOUNCE_TYPES)
+    description = models.TextField(_("Description"))
+    details = models.TextField(_("Details"))
     
-    bounced_at = models.DateTimeField()
+    bounced_at = models.DateTimeField(_("Bounced At"))
     
     def __unicode__(self):
         return u"%s" % (self.bounce_id,)
-    
-    
 
 @receiver(post_send)
 def sent_message(sender, **kwargs):
