@@ -11,6 +11,8 @@ except ImportError:
         import simplejson as json
     except ImportError:
         raise Exception('Cannot use django-postmark without Python 2.6 or greater, or Python 2.4 or 2.5 and the "simplejson" library')
+        
+from postmark.signals import post_send
 
 # Settings
 POSTMARK_API_KEY = getattr(settings, "POSTMARK_API_KEY", None)
@@ -158,6 +160,8 @@ class PostmarkBackend(BaseEmailBackend):
         
         for batch in [postmark_messages[x:x+self.BATCH_SIZE] for x in range(0, len(postmark_messages), self.BATCH_SIZE)]:
             postmark_responses.extend(self._send(batch))
+        
+        [post_send.send(sender=self, message=postmark_messages[i], response=x) for i, x in enumerate(postmark_responses)]
         
         return len(filter(lambda x: x["ErrorCode"] == 0 and x["HttpStatus"] == 200, postmark_responses))
     
