@@ -48,8 +48,7 @@ class EmailMessage(models.Model):
     sender = models.CharField(_("Sender"), max_length=150)
     reply_to = models.CharField(_("Reply To"), max_length=150)
     subject = models.CharField(_("Subject"), max_length=150)
-    tag = models.CharField(_("Tag"), max_length=25)
-    
+    tag = models.CharField(_("Tag"), max_length=150)
     text_body = models.TextField(_("Text Body"))
     html_body = models.TextField(_("HTML Body"))
     

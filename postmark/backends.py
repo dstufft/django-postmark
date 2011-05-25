@@ -21,7 +21,6 @@ POSTMARK_SSL = getattr(settings, "POSTMARK_SSL", False)
 POSTMARK_TEST_MODE = getattr(settings, "POSTMARK_TEST_MODE", False)
 
 POSTMARK_API_URL = ("https" if POSTMARK_SSL else "http") + "://api.postmarkapp.com/email"
-POSTMARK_BATCH_API_URL = ("https" if POSTMARK_SSL else "http") + "://api.postmarkapp.com/email/batch"
 
 class PostmarkMailSendException(Exception):
     """
@@ -143,7 +142,6 @@ class PostmarkBackend(BaseEmailBackend):
         
         self.api_key = api_key or POSTMARK_API_KEY
         self.api_url = api_url or POSTMARK_API_URL
-        self.api_batch_url = api_batch_url or POSTMARK_BATCH_API_URL
         
         if self.api_key is None:
             raise ImproperlyConfigured("POSTMARK_API_KEY must be set in Django settings file or passed to backend constructor.")
@@ -156,54 +154,46 @@ class PostmarkBackend(BaseEmailBackend):
         if not email_messages:
             return
         
-        postmark_messages = filter(None, [PostmarkMessage(msg, self.fail_silently) for msg in email_messages])
-        postmark_responses = []
-        
-        for batch in [postmark_messages[x:x+self.BATCH_SIZE] for x in range(0, len(postmark_messages), self.BATCH_SIZE)]:
-            postmark_responses.extend(self._send(batch))
-        
-        [post_send.send(sender=self, message=postmark_messages[i], response=x) for i, x in enumerate(postmark_responses)]
-        
-        return len(filter(lambda x: x["ErrorCode"] == 0 and x["HttpStatus"] == 200, postmark_responses))
+        num_sent = 0
+        for message in email_messages:
+            sent = self._send(PostmarkMessage(message, self.fail_silently))
+            if sent:
+                num_sent += 1
+        return num_sent
     
-    def _send(self, messages):
+    def _send(self, message):
         http = httplib2.Http()
         
         if POSTMARK_TEST_MODE:
-            responses = []
-            for message in messages:
-                print 'JSON message is:\n%s' % json.dumps(message)
-                responses.append({"ErrorCode": 0, "HttpStatus": 200})
-            return responses
+            print 'JSON message is:\n%s' % json.dumps(message)
+            return
         
-        resp, content = http.request(self.api_batch_url,
-            body=json.dumps(messages),
-            method="POST",
-            headers={
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "X-Postmark-Server-Token": self.api_key,
-            })
+        try:
+            resp, content = http.request(self.api_url,
+                body=json.dumps(message),
+                method="POST",
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "X-Postmark-Server-Token": self.api_key,
+                })
+        except httplib2.HttpLib2Error:
+            if not self.fail_silently:
+                return False
+            raise
         
         if resp["status"] == "200":
-            responses = [dict(x.items() + [("HttpStatus", 200)]) for x in json.loads(content)]
+            post_send.send(sender=self, message=message, response=json.loads(content))
+            return True
         elif resp["status"] == "401":
-            if self.fail_silently:
-                responses = [{"ErrorCode": 0, "HttpStatus": 401}]
-            else:
+            if not self.fail_silently:
                 raise PostmarkMailUnauthorizedException("Your Postmark API Key is Invalid.")
         elif resp["status"] == "422":
-            if self.fail_silently:
-                content_dict = json.loads(content)
-                content_dict["HttpStatus"] = 422
-                responses = [content_dict]
-            else:
+            if not self.fail_silently:
                 content_dict = json.loads(content)
                 raise PostmarkMailUnprocessableEntityException(content_dict["Message"])
         elif resp["status"] == "500":
-            if self.fail_silently:
-                responses = [{"ErrorCode": 0, "HttpStatus": 500}]
-            else:
+            if not self.fail_silently:
                 PostmarkMailServerErrorException()
         
-        return responses
+        return False

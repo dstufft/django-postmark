@@ -57,13 +57,16 @@ def bounce(request):
                 return HttpResponseForbidden()
                 
             type, base64encoded = request.META["HTTP_AUTHORIZATION"].split(" ", 1)
+            print type, base64encoded
             
             if type.lower() == "basic":
                 username_password = base64.decodestring(base64encoded)
+                print username_password
             else:
                 return HttpResponseForbidden()
                 
             if not username_password == "%s:%s" % (POSTMARK_API_USER, POSTMARK_API_PASSWORD):
+                print "lol"
                 return HttpResponseForbidden()
         
         bounce_dict = json.loads(request.read())
