@@ -9,8 +9,12 @@ setup(
     long_description = open("README.rst").read(),
     url = "http://github.com/dstufft/django-postmark/",
     license = "BSD",
+    install_requires = [
+        "httplib2",
+    ],
     packages = [
         "postmark",
+        "postmark.migrations",
     ],
     classifiers = [
         "Development Status :: 4 - Beta",
